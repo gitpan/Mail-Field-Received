@@ -1,0 +1,78 @@
+2000-04-10  adam  <adam@pulse>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/t/all.t:
+	more tests (this should be enough now)
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	- better docs
+	- hms was missing from date_time3 parse
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/README:
+	Added to `Uses' section
+
+2000-04-09  adam  <adam@pulse>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/INSTALL, /usr/local/cvsroot/adam/parp/Mail/Field/MANIFEST, /usr/local/cvsroot/adam/parp/Mail/Field/Makefile.PL, /usr/local/cvsroot/adam/parp/Mail/Field/README, /usr/local/cvsroot/adam/parp/Mail/Field/t/all.t:
+	first versions
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	- now inherits from Mail::Field::Generic too
+	- added pod about this
+
+2000-04-05  adam  <adam@pulse>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm: missed a )
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	allow from <foo@bar.com>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	`from' after `by' ...
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	`from' sometimes after `id'?! *sigh*
+
+2000-04-04  adam  <adam@pulse>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	- Moved from Mail::Header::Received to Mail::Field::Received
+	- several other improvements
+
+2000-03-20  adam  <adam@pulse>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	date parsing tweaks
+
+2000-03-19  adam  <adam@pulse>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	- zone tweak
+	- ,... allowed after addr_spec4
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	- Numerous improvements to the parser.  It now catches virtually all
+	  exceptions to the RFC.
+	- Replaced the $state variable with %expecting.
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	allow `, ...' at end of addr_spec
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	allow for -0500(EST) i.e. no space
+
+2000-02-14  adam  <adam@pulse>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm: export %RC
+
+2000-02-12  Adam Spiers  <localadams@pulse>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	- (c) 2000
+	- version not from RCS
+
+2000-02-11  Adam Spiers  <localadams@pulse>
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm: pod fixes
+
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm: Initial import.
+

@@ -1,0 +1,7 @@
+README
+INSTALL
+ChangeLog
+MANIFEST
+Makefile.PL
+Received.pm
+t/all.t
