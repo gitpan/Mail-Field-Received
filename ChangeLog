@@ -1,5 +1,8 @@
 2000-04-10  adam  <adam@pulse>
 
+	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	doh, forgot =over 4 and =back
+
 	* /usr/local/cvsroot/adam/parp/Mail/Field/t/all.t:
 	more tests (this should be enough now)
 

@@ -32,7 +32,10 @@ ok($received->parsed_ok());
 my $parse_tree = {
                   'by' => {
                            'domain' => 'host5.hostingcheck.com',
-                           'whole' => 'by host5.hostingcheck.com'
+                           'whole' => 'by host5.hostingcheck.com',
+                           'comments' => [
+                                          '(8.9.3/8.9.3)'
+                                         ],
                           },
                   'date_time' => {
                                   'year' => 2000,
@@ -55,14 +58,13 @@ my $parse_tree = {
                             },
                   'from' => {
                              'domain' => 'mediacons.tecc.co.uk',
-                             'HELO' => undef,
+                             'HELO' => 'tr909.mediaconsult.com',
+                             'from' => 'tr909.mediaconsult.com',
                              'address' => '193.128.6.132',
                              'comments' => [
                                             '(mediacons.tecc.co.uk [193.128.6.132])',
-                                            '(8.9.3/8.9.3)',
                                            ],
                              'whole' => 'from tr909.mediaconsult.com (mediacons.tecc.co.uk [193.128.6.132])
- (8.9.3/8.9.3)
 '
                             },
                   'id' => {
@@ -79,7 +81,9 @@ my $parse_tree = {
                            },
                   'whole' => 'from tr909.mediaconsult.com (mediacons.tecc.co.uk [193.128.6.132]) by host5.hostingcheck.com (8.9.3/8.9.3) with ESMTP id VAA24164 for <adam@spiers.net>; Tue, 1 Feb 2000 21:57:18 -0500'
                  };
-ok(equal_hashes($parse_tree, $received->parse_tree()));
+my $equal = equal_hashes($parse_tree, $received->parse_tree());
+ok($equal);
+diagnose($received) unless $equal;
 
 
 print "!   date format 3 again\n";
@@ -107,7 +111,9 @@ $parse_tree = {
                              ],
                'whole' => '(qmail 7119 invoked from network); 22 Feb 1999 22:01:53 -0000'
               };
-ok(equal_hashes($parse_tree, $received->parse_tree()));
+$equal = equal_hashes($parse_tree, $received->parse_tree());
+ok($equal);
+diagnose($received) unless $equal;
 
 
 print "!   date format 1\n";
@@ -121,7 +127,9 @@ $parse_tree->{date_time}{whole} = $new_date_time;
 $parse_tree->{date_time}{date_time} = $new_date_time;
 $parse_tree->{date_time}{rest} = $new_rest;
 $parse_tree->{whole} = $in;
-ok(equal_hashes($parse_tree, $received->parse_tree()));
+$equal = equal_hashes($parse_tree, $received->parse_tree());
+ok($equal);
+diagnose($received) unless $equal;
 
 
 print "!   date format 2\n";
@@ -135,7 +143,9 @@ $parse_tree->{date_time}{whole} = $new_date_time;
 $parse_tree->{date_time}{date_time} = $new_date_time;
 $parse_tree->{date_time}{rest} = $new_rest;
 $parse_tree->{whole} = $in;
-ok(equal_hashes($parse_tree, $received->parse_tree()));
+$equal = equal_hashes($parse_tree, $received->parse_tree());
+ok($equal);
+diagnose($received) unless $equal;
 
 
 print "! Testing different constructor method ...\n";
@@ -145,7 +155,10 @@ ok($received2->parsed_ok());
 $parse_tree = {
                'by' => {
                         'domain' => 'lists.securityfocus.com',
-                        'whole' => 'by lists.securityfocus.com'
+                        'whole' => 'by lists.securityfocus.com',
+                        'comments' => [
+                                       '(Postfix)'
+                                      ],
                        },
                'date_time' => {
                                'year' => 2000,
@@ -168,14 +181,13 @@ $parse_tree = {
                          },
                'from' => {
                           'domain' => 'lists.securityfocus.com',
-                          'HELO' => undef,
+                          'from' => 'lists.securityfocus.com',
+                          'HELO' => 'lists.securityfocus.com',
                           'address' => '207.126.127.68',
                           'comments' => [
                                          '(lists.securityfocus.com [207.126.127.68])',
-                                         '(Postfix)'
                                         ],
                           'whole' => 'from lists.securityfocus.com (lists.securityfocus.com [207.126.127.68])
- (Postfix)
 '
                          },
                'id' => {
@@ -188,7 +200,9 @@ $parse_tree = {
                              ],
                'whole' => 'from lists.securityfocus.com (lists.securityfocus.com [207.126.127.68]) by lists.securityfocus.com (Postfix) with ESMTP id 1C2AF1F138; Mon, 14 Feb 2000 10:24:11 -0800 (PST)'
               };
-ok(equal_hashes($parse_tree, $received2->parse_tree()));
+$equal = equal_hashes($parse_tree, $received2->parse_tree());
+ok($equal);
+diagnose($received2) unless $equal;
 
 
 print "Testing stringify() ...\n";
@@ -212,8 +226,6 @@ sub equal_hashes {
 
   my @a = sort keys %$a;
   my @b = sort keys %$b;
-  
-  my $diags = '';
   
   while (my $p = shift @a and my $q = shift @b) {
 #   print "Comparing `$p' and `$q' ...\n";
@@ -266,7 +278,7 @@ sub equal_arrays {
 
   local $^W = 0;  # silence spurious -w undef complaints
   if (@$a != @$b) {
-    print "Array of different length\n";
+    print "Arrays of different length:\n", (Dumper $a), (Dumper $b);
     return 0;
   }
   
@@ -277,3 +289,24 @@ sub equal_arrays {
   return 1;
 }
   
+sub diagnose {
+  my ($received) = @_;
+
+  print <<EOF;
+
+Diagnostics:
+============
+
+EOF
+
+  print $received->diagnostics();
+
+  print <<EOF;
+
+Parse tree:
+===========
+
+EOF
+  print Dumper $received->parse_tree();
+  print "\n";
+}

@@ -4,7 +4,8 @@ README for Mail::Field::Received
                            =====================
 
 Mail::Field::Received is a parser of `Received' headers in e-mails.
-
+It mostly complies with RFC822, but deviates to accomodate a number of
+broken MTAs which are in common use.
 
 Uses
 ----

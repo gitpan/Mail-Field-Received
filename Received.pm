@@ -7,7 +7,7 @@
 # reserved. This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# $Id: Received.pm,v 1.16 2000/04/10 11:51:45 adam Exp $
+# $Id: Received.pm,v 1.19 2000/04/27 00:09:22 adam Exp $
 #
 
 require 5.005;
@@ -23,7 +23,7 @@ use vars qw($VERSION @ISA @EXPORT_OK);
 @ISA = qw(Exporter Mail::Field Mail::Field::Generic);
 @EXPORT_OK = qw(%RC &diagnose);
 
-$VERSION = '0.20';
+$VERSION = '0.22';
 
 =head1 NAME
 
@@ -51,6 +51,8 @@ classes.
   my $diagnostics = $received->diagnostics();
 
 =head1 ROUTINES
+
+=over 4
 
 =cut
 
@@ -169,30 +171,31 @@ $RC{date_time}   = qr/(
 $RC{ipv4_addr}   = qr/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/;
 # check valid with inet_aton()
 
-$RC{domain_lit}  = qr/(\[(?:$RC{dtext}|$RC{quoted_pair})*\])/;
-$RC{sub_domain}  = qr/($RC{atom}|$RC{domain_lit})/;
-$RC{domain}      = qr/($RC{sub_domain}(?:\.$RC{sub_domain})*)/;
-$RC{local_part}  = qr/($RC{word}(?:\.$RC{word})*)/;
+$RC{domain_lit}  = qr/(?:\[(?:$RC{dtext}|$RC{quoted_pair})*\])/;
+$RC{sub_domain}  = qr/(?:$RC{atom}|$RC{domain_lit})/;
+$RC{domain}      = qr/(?:$RC{sub_domain}(?:\.$RC{sub_domain})*)/;
+$RC{local_part}  = qr/(?:$RC{word}(?:\.$RC{word})*)/;
 
 # This is the RFC822 addr-spec ...
-$RC{addr_spec}   = qr/$RC{local_part}\@$RC{domain}/;
+$RC{addr_spec}   = qr/($RC{local_part})\@($RC{domain})/;
 
 # ... but many MTAs are non-compliant:
-$RC{addr_spec2}  = qr/$RC{local_part}(?:\@$RC{domain})?/;
-$RC{addr_spec3}  = qr/$RC{addr_spec2}|$RC{domain}/;
+$RC{addr_spec2}  = qr/($RC{local_part})(?:\@($RC{domain}))?/;
+$RC{addr_spec3}  = qr/$RC{addr_spec2}|($RC{domain})/;
 $RC{addr_spec4}  = qr/((?:$RC{words}\s+)?<$RC{addr_spec3}>|$RC{addr_spec3})
                       (?:,\s?\.\.\.)?/x;
-$RC{addr_spec5}  = qr/(?:$RC{local_part}\@)?$RC{domain}/;
+$RC{addr_spec5}  = qr/(?:(?:($RC{local_part})\@)?($RC{domain}))/;
 
 # RFC822 dictates that msg-id is "<" addr-spec ">" but in practice
 # many MTAs do not adhere to this for the "id" part of Received headers.
 $RC{msg_id}      = qr/(<$RC{addr_spec2}>|\#?[\w\.-]+)/;
 
-$RC{from}    = qr/((?i:from) \s+     (<$RC{addr_spec}>|$RC{addr_spec5})?)/x;
-$RC{by}      = qr/((?i:by)   \s+       $RC{domain})/x;
+$RC{from1}   = qr/((?i:from) \s+     (<$RC{addr_spec}>))/x;
+$RC{from2}   = qr/((?i:from) \s+      ($RC{addr_spec5})?)/x;
+$RC{by}      = qr/((?i:by)   \s+      ($RC{domain}))/x;
 $RC{via}     = qr/((?i:via)  \s+      ($RC{atom}))/x;
 $RC{with}    = qr/((?i:with) \s       ($RC{atom})?)/x; # sometimes empty atom
-$RC{id}      = qr/((?i:id)   \s+       $RC{msg_id})/x;
+$RC{id}      = qr/((?i:id)   \s+       $RC{msg_id}(?::(\d+))?)/x;
 $RC{for}     = qr/((?i:for)  \s+       $RC{addr_spec4})/x;
 $RC{sent_by} = qr/((?i:sent \s by) \s+ $RC{addr_spec4})/x;
 $RC{convert} = qr/((?i:convert) \s+   ($RC{atom}))/x;
@@ -240,124 +243,220 @@ sub parse {
                       (qw/from by via with id convert for sent_by date_time/);
 
   for ($recv) {
+    my $last_section = '';
+
    TOKEN:
     while (1) {
-      $self->diagnose("Expecting: ", (join ' ', keys %expecting), "\n")
-        if $debug >= 4;
+      $self->diagnose("---- Expecting: ", (join ' ', sort keys %expecting),
+                      "\n") if $debug >= 5;
+      $self->diagnose("---- Last section: $last_section\n")
+        if $debug >= 6;
 
       if (/\G$RC{comment}/cg) {
         my $comment = $1;
-        $self->diagnose("Got comment $comment\n") if $debug >= 3;
-        if ($expecting{after_from}) {
+        $self->diagnose("Got comment $comment\n") if $debug >= 4;
+
+        push @{$parsed{$last_section}{comments}}, $comment
+          if $last_section;
+        push @{$parsed{comments}}, $comment;
+
+        if ($last_section eq 'from') {
          FROMCOMMENT:
           {
-            push @{$parsed{from}{comments}}, $comment;
-            if ($comment =~ /\(
-                                (?:(?:$RC{local_part}\@)?$RC{domain}\s+)?
+            if ($comment =~ 
+#                            /()($RC{domain})\s+\[($RC{ipv4_addr})\]/)
+                            /\(
+                                (?:(?:($RC{local_part})\@)?($RC{domain})\s+)?
                                 (?:\[ $RC{ipv4_addr} \])(?:
-                              )\)/x)
+                            )\)/x)
             {
-              $parsed{from}{ident}   = $1 if $1;
-              $parsed{from}{domain}  = $2 if $2;
-              $parsed{from}{address} = $7;
+              if ($1) {
+                $self->diagnose("Got `from' ident in comments: $1\n")
+                  if $debug >= 3;
+                $parsed{from}{ident} = $1;
+              }
+
+              if ($2) {
+                $self->diagnose("Got `from' domain in comments: $2\n")
+                  if $debug >= 3;
+                $parsed{from}{domain} = $2;
+              }
+
+              if ($3) {
+                $self->diagnose("Got `from' IP address in comments: $3\n")
+                  if $debug >= 3;
+                $parsed{from}{address} = $3;
+              }
+
               last FROMCOMMENT;
             }
-            if ($comment =~ /(HELO|EHLO)\s+$RC{domain}/) {
+
+            if ($comment =~ /(HELO|EHLO)\s+($RC{domain})/) {
               # HELO domain is in comments, not outside, so swap
+              $self->diagnose("Got $1 domain in comments: $2\n")
+                if $debug >= 3;
               @{$parsed{from}}{qw/domain HELO/}
                 = ($parsed{from}{HELO}, $2);
             }
+
             if ($comment =~ /$RC{ipv4_addr}\]?(?::(\d{1,5}))?/) {
+              $self->diagnose("Got IP address in comments: $1\n")
+                if $debug >= 3;
+
               $parsed{from}{address} = $1;
-              $parsed{from}{port}    = $2 if $2;
+
+              if ($2) {
+                $parsed{from}{port} = $2;
+                $self->diagnose("Got port in comments: $1\n")
+                  if $debug >= 3;
+              }
             }
           }
           $parsed{from}{whole} .= " $comment\n";
         }
-        push @{$parsed{comments}}, $comment;
+
         next TOKEN;
       }
       
       if (/\G(\s+)/cg) {
-        $self->diagnose("Got whitespace: <$1>\n") if $debug >= 6;
+        $self->diagnose("Got whitespace: <$1>\n") if $debug >= 7;
         next TOKEN;
       }
       
-      if ($expecting{from} and /\G$RC{from}/cg) {
-        $self->diagnose("Got from: $1\n") if $debug >= 2;
+      if ($expecting{from} and /\G$RC{from1}/cg) {
+        print map { ($_ || '__undef__') . "\n---\n" } $1, $2, $3, $4, $5, $6;
+        $self->diagnose("Got from type1: $1\n") if $debug >= 2;
+        $last_section = 'from';
+        
         $parsed{from}{whole} = $1;
-        $parsed{from}{HELO}  = $4;
+        $parsed{from}{from}  = $2;
         $parsed{from}{ident} = $3 if $3;
+        $parsed{from}{HELO}  = $4;
+
         delete $expecting{from};
+        delete @expecting{grep /^after_/, keys %expecting};
+        $expecting{after_from}++;
+        next TOKEN;
+      }
+      
+      if ($expecting{from} and /\G$RC{from2}/cg) {
+        $self->diagnose("Got from type2: $1\n") if $debug >= 2;
+        $last_section = 'from';
+
+        $parsed{from}{whole} = $1;
+        $parsed{from}{from}  = $2;
+        $parsed{from}{ident} = $3 if $3;
+        $parsed{from}{HELO}  = $4;
+
+        delete $expecting{from};
+        delete @expecting{grep /^after_/, keys %expecting};
         $expecting{after_from}++;
         next TOKEN;
       }
       
       if ($expecting{after_from} and /\G$RC{domain_lit}/cg) {
-        $self->diagnose("Got address from bad `from': $1\n") if $debug >= 2;
+        $self->diagnose("Got address from bad `from': $1\n") if $debug >= 3;
         $parsed{from}{address} = $1;
+        delete $expecting{after_from};
         next TOKEN;
       }
 
       if ($expecting{after_from} and $parsed{from}{whole} eq 'from mail' and
           /\G(pickup service)/cg) {
         $self->diagnose("Got bad `from': appending: $1\n")
-          if $debug >= 2;
+          if $debug >= 3;
         $parsed{from}{whole} .= $1;
+        delete $expecting{after_from};
         next TOKEN;
       }
 
       # Deal with incompetence from the fucking /imbeciles/ at M$.
       if ($expecting{after_from} and $parsed{whole} =~ /Microsoft SMTPSVC/ and
           /\G-\s+$RC{ipv4_addr}/cg) {
-        $self->diagnose("Got IP from bad M\$ from: $1\n") if $debug >= 2;
+        $self->diagnose("Got IP from bad M\$ from: $1\n") if $debug >= 3;
         $parsed{from}{address} = $1;
+        delete $expecting{after_from};
         next TOKEN;
       }
 
       if ($expecting{after_from} and /\G, claiming to be ($RC{word})/cg) {
-        $self->diagnose("Got HELO: $1 from brain-dead MTA\n") if $debug >= 2;
+        $self->diagnose("Got HELO: $1 from brain-dead MTA\n") if $debug >= 3;
         $parsed{allow_parse_fail}++;       # More brain-dead MTAs
         $parsed{from}{HELO} = $1;
+        delete $expecting{after_from};
         next TOKEN;
       }
 
       if ($expecting{by} and /\G$RC{by},?/cg) {
         $self->diagnose("Got by: $1\n") if $debug >= 2;
+        $last_section = 'by';
+
         $parsed{by}{whole}  = $1;
         $parsed{by}{domain} = $2;
+
         delete @expecting{qw/by/};
+        delete @expecting{grep /^after_/, keys %expecting};
         $expecting{after_by}++;
         next TOKEN;
       }
 
       if ($expecting{after_by} and /\G$RC{domain_lit}/cg) {
-        $self->diagnose("Got address from bad `by': $1\n") if $debug >= 2;
+        $self->diagnose("Got address from bad `by': $1\n") if $debug >= 3;
         $parsed{by}{address} = $1;
+        delete $expecting{after_by};
+        next TOKEN;
+      }
+
+      if ($expecting{after_by} and /\G(Sendmail)/cg) {
+        $self->diagnose("Got MTA from bad `by': $1\n") if $debug >= 3;
+        $parsed{by}{MTA} = $1;
+
+        if ($expecting{via}) {
+          $parsed{via}{via} = $1;
+        }
+        
         delete $expecting{after_by};
         next TOKEN;
       }
 
       if ($expecting{via} and /\G$RC{via}/cg) {
         $self->diagnose("Got via: $1\n") if $debug >= 2;
+        $last_section = 'via';
+
         $parsed{via}{whole} = $1;
         $parsed{via}{via}   = $2;
-        delete @expecting{qw/after_from after_by via/};
+
+        delete $expecting{via};
+        delete @expecting{grep /^after_/, keys %expecting};
+        $expecting{after_via}++;
+        next TOKEN;
+      }
+
+      if ($expecting{after_via} and /\G\[$RC{ipv4_addr}\]/cg) {
+        $self->diagnose("Got address from bad `via': $1\n") if $debug >= 3;
+        $parsed{via}{address} = $1;
+        delete $expecting{after_via};
         next TOKEN;
       }
 
       if (! $expecting{from} and /\Gfrom\s+stdin/cg) {
-        $self->diagnose("Got `from stdin'\n") if $debug >= 2;
+        $self->diagnose("Got `from stdin'\n") if $debug >= 3;
         $parsed{from}{stdin} = 'yep';
         next TOKEN;
       }
 
-      if ($expecting{with} and /\G$RC{with}/cg) {
-        $self->diagnose("Got with: $1\n") if $debug >= 2;
+      if ($expecting{with} and
+          m!
+            \G((?i:with) \s
+            (P:(stdio|smtp)/R:(inet|bind)_hosts/T:(smtp|inet_zone_bind_smtp)))
+           !cgx) {
+        $self->diagnose("Got weird with: $1\n") if $debug >= 2;
+        $last_section = 'with';
+
         $parsed{with}{whole} = $1;
         $parsed{with}{with}  = $2;
-        $parsed{with}{with} .= $3 if $3;
-        delete @expecting{qw/after_from after_by/};
+
+        delete @expecting{grep /^after_/, keys %expecting};
         $expecting{after_with}++;
         # I've seen the `from' bit come after the `with' bit sometimes.
         # Why oh why ...
@@ -365,85 +464,125 @@ sub parse {
         next TOKEN;
       }
 
-      # Microsoft SMTPSVC uses two atoms -- yet /another/ example of
-      # Microsoft not following standards ... *gasp*
+      if ($expecting{with} and /\G$RC{with}/cg) {
+        $self->diagnose("Got with: $1\n") if $debug >= 2;
+        $last_section = 'with';
 
-      if ($expecting{after_with} and $parsed{with}{with} eq 'Microsoft') {
-        if (/\GSMTPSVC(?:\(([\d\.]+)\))?/cg) {
-          $self->diagnose("Got M\$ SMTPSVC version from bad `with'",
-                          $1 ? ": $1" : '',
-                          "\n")
-            if $debug >= 2;
+        $parsed{with}{whole} = $1;
+        $parsed{with}{with}  = $2;
+        $parsed{with}{with} .= $3 if $3;
+
+        delete @expecting{grep /^after_/, keys %expecting};
+        $expecting{after_with}++;
+        # I've seen the `from' bit come after the `with' bit sometimes.
+        # Why oh why ...
+        $expecting{from}++;
+        next TOKEN;
+      }
+
+      if ($expecting{after_with}) {
+
+        # Microsoft SMTPSVC uses two atoms -- yet /another/ example of
+        # Microsoft not following standards ... *gasp*
+
+        if ($parsed{with}{with} eq 'Microsoft') {
+          if (/\GSMTPSVC(?:\(([\d\.]+)\))?/cg) {
+            $self->diagnose("Got M\$ SMTPSVC version from bad `with'",
+                            $1 ? ": $1" : '',
+                            "\n")
+              if $debug >= 3;
+            delete $expecting{after_with};
+            next TOKEN;
+          }
+          elsif (/\GMAPI/cg) {
+            $self->diagnose("Got Microsoft MAPI from bad `with'\n")
+              if $debug >= 3;
+            delete $expecting{after_with};
+            next TOKEN;
+          }
+        }
+
+        # More brain damage ...
+
+        if ($parsed{with}{with} eq 'Internet' and
+            /\GMail Service\s*\(([\d\.]+)\)/cg) {
+          $self->diagnose("Got Internet Mail Service version from bad `with': $1\n")
+            if $debug >= 3;
+          delete $expecting{after_with};
           next TOKEN;
         }
-        elsif (/\GMAPI/cg) {
-          $self->diagnose("Got Microsoft MAPI from bad `with'\n")
-            if $debug >= 2;
+
+        if ($parsed{with}{with} eq 'WorldClient' and
+            /\G$RC{domain_lit}/cg) {
+          $self->diagnose("Got WorldClient address from bad `with': $1\n")
+            if $debug >= 3;
+          delete $expecting{after_with};
           next TOKEN;
         }
-      }
 
-      # More brain damage ...
+        if ($parsed{with}{with} eq 'Local' and
+            /\GSMTP/cg) {
+          $self->diagnose("Got Local SMTP from bad `with'\n")
+            if $debug >= 3;
+          delete $expecting{after_with};
+          next TOKEN;
+        }
 
-      if ($expecting{after_with} and $parsed{with}{with} eq 'Internet' and
-          /\GMail Service\s*\(([\d\.]+)\)/cg) {
-        $self->diagnose("Got Internet Mail Service version from bad `with': $1\n")
-          if $debug >= 2;
-        next TOKEN;
-      }
-
-      if ($expecting{after_with} and $parsed{with}{with} eq 'WorldClient' and
-          /\G$RC{domain_lit}/cg) {
-        $self->diagnose("Got WorldClient address from bad `with': $1\n")
-          if $debug >= 2;
-        next TOKEN;
-      }
-
-      if ($expecting{after_with} and $parsed{with}{with} eq 'Local' and
-          /\GSMTP/cg) {
-        $self->diagnose("Got Local SMTP from bad `with'\n")
-          if $debug >= 2;
-        next TOKEN;
       }
 
       if ($expecting{id} and /\G$RC{id}/cg) {
         $self->diagnose("Got id: $1\n") if $debug >= 2;
+        $last_section = 'id';
+        
         $parsed{id}{whole} = $1;
         $parsed{id}{id}    = $2;
-        delete @expecting{qw/after_from by after_by via with after_with/};
+        $parsed{id}{port}  = $3 if $3;
+
+        delete @expecting{qw/by via with/};
+        delete @expecting{grep /^after_/, keys %expecting};
         next TOKEN;
       }
 
       if ($expecting{convert} and /\G$RC{convert}/cg) {
         $self->diagnose("Got convert: $1\n") if $debug >= 2;
+        $last_section = 'convert';
+        
         $parsed{convert}{whole} = $1;
-        delete @expecting{qw/from after_from by after_by via with after_with
-                             convert/};
+        
+        delete @expecting{qw/from by via with convert/};
+        delete @expecting{grep /^after_/, keys %expecting};
         next TOKEN;
       }
 
       if ($expecting{for} and
           /\G$RC{for}(\s+bugtraq\@securityfocus\.com)?/cgi) {
         $self->diagnose("Got for: $1\n") if $debug >= 2;
+        $last_section = 'for';
+
         $parsed{for}{whole} = $1;
         $parsed{for}{for}   = $2;
         $parsed{for}{bugtraq} = $3 if $3;
-        delete @expecting{qw/from after_from by after_by after_with
-                             convert for/};
+
+        delete @expecting{qw/from by convert for/};
+        delete @expecting{grep /^after_/, keys %expecting};
         next TOKEN;
       }
 
       if ($expecting{sent_by} and /\G$RC{sent_by}/cg) {
         $self->diagnose("Got sent by: $1\n") if $debug >= 2;
+        $last_section = 'sent_by';        
+
         $parsed{sent_by}{whole}   = $1;
         $parsed{sent_by}{sent_by} = $2;
-        delete @expecting{qw/from after_from by after_by via with after_with
-                             convert for sent_by/};
+
+        delete @expecting{qw/from by via with convert for sent_by/};
+        delete @expecting{grep /^after_/, keys %expecting};
         next TOKEN;
       }
 
       if ($expecting{date_time} and /\G((?:on\s+)?$RC{date_time})/cg) {
         $self->diagnose("Got date_time: $1\n") if $debug >= 2;
+        $last_section = 'date_time';
         
         # Eugh.  This is horrible.  Maybe I should have used
         # Parse::RecDescent after all ...
@@ -486,14 +625,14 @@ sub parse {
       }
 
       if ($expecting{after_date_time} and /\G((mail.from|env.from).+)/cg) {
-        $self->diagnose("Got random crap after date: $1\n") if $debug >= 2;
+        $self->diagnose("Got random crap after date: $1\n") if $debug >= 3;
         $parsed{after_date_time} = $1;
         next TOKEN;
       }
 
       # Reluctantly allow semi-colons in random places
       if (/\G(;\s+)/cg) {
-        $self->diagnose("Got semi-colon: <$1>\n") if $debug >= 6;
+        $self->diagnose("Got semi-colon: <$1>\n") if $debug >= 7;
         next TOKEN;
       }
 
@@ -622,6 +761,7 @@ sub parse_tree {
   return $self->{parse_tree};
 }
 
+=back
 
 =head1 BUGS
 
