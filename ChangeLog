@@ -1,81 +1,88 @@
-2000-04-10  adam  <adam@pulse>
+2000-04-27  Adam Spiers  <adam@thelonious.new.ox.ac.uk>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
-	doh, forgot =over 4 and =back
+	* Received.pm: 0.23
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/t/all.t:
-	more tests (this should be enough now)
+	* Received.pm: oops, forgot brackets around domain_lit
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	* Received.pm: 0.22
+
+2000-04-26  Adam Spiers  <adam@thelonious.new.ox.ac.uk>
+
+	* t/all.t, Received.pm:
+	loads of tidying up and bugfixes (and new bugs probably)
+
+2000-04-12  Adam Spiers  <adam@thelonious>
+
+	* README: RFC822 mutterings
+
+2000-04-10  Adam Spiers  <adam@thelonious>
+
+	* Received.pm: doh, forgot =over 4 and =back
+
+	* t/all.t: more tests (this should be enough now)
+
+	* Received.pm:
 	- better docs
 	- hms was missing from date_time3 parse
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/README:
-	Added to `Uses' section
+	* README: Added to `Uses' section
 
-2000-04-09  adam  <adam@pulse>
+2000-04-09  Adam Spiers  <adam@thelonious>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/INSTALL, /usr/local/cvsroot/adam/parp/Mail/Field/MANIFEST, /usr/local/cvsroot/adam/parp/Mail/Field/Makefile.PL, /usr/local/cvsroot/adam/parp/Mail/Field/README, /usr/local/cvsroot/adam/parp/Mail/Field/t/all.t:
-	first versions
+	* INSTALL, MANIFEST, Makefile.PL, README, t/all.t: first versions
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	* Received.pm:
 	- now inherits from Mail::Field::Generic too
 	- added pod about this
 
-2000-04-05  adam  <adam@pulse>
+2000-04-05  Adam Spiers  <adam@thelonious>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm: missed a )
+	* Received.pm: missed a )
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
-	allow from <foo@bar.com>
+	* Received.pm: allow from <foo@bar.com>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
-	`from' after `by' ...
+	* Received.pm: `from' after `by' ...
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
-	`from' sometimes after `id'?! *sigh*
+	* Received.pm: `from' sometimes after `id'?! *sigh*
 
-2000-04-04  adam  <adam@pulse>
+2000-04-04  Adam Spiers  <adam@thelonious>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	* Received.pm:
 	- Moved from Mail::Header::Received to Mail::Field::Received
 	- several other improvements
 
-2000-03-20  adam  <adam@pulse>
+2000-03-20  Adam Spiers  <adam@thelonious>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
-	date parsing tweaks
+	* Received.pm: date parsing tweaks
 
-2000-03-19  adam  <adam@pulse>
+2000-03-19  Adam Spiers  <adam@thelonious>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	* Received.pm:
 	- zone tweak
 	- ,... allowed after addr_spec4
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	* Received.pm:
 	- Numerous improvements to the parser.  It now catches virtually all
 	  exceptions to the RFC.
 	- Replaced the $state variable with %expecting.
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
-	allow `, ...' at end of addr_spec
+	* Received.pm: allow `, ...' at end of addr_spec
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
-	allow for -0500(EST) i.e. no space
+	* Received.pm: allow for -0500(EST) i.e. no space
 
-2000-02-14  adam  <adam@pulse>
+2000-02-14  Adam Spiers  <adam@thelonious>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm: export %RC
+	* Received.pm: export %RC
 
-2000-02-12  Adam Spiers  <localadams@pulse>
+2000-02-12  adam  <localadams@thelonious>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm:
+	* Received.pm:
 	- (c) 2000
 	- version not from RCS
 
-2000-02-11  Adam Spiers  <localadams@pulse>
+2000-02-11  adam  <localadams@thelonious>
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm: pod fixes
+	* Received.pm: pod fixes
 
-	* /usr/local/cvsroot/adam/parp/Mail/Field/Received.pm: Initial import.
+	* Received.pm: Initial import.
 

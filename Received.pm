@@ -7,7 +7,7 @@
 # reserved. This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# $Id: Received.pm,v 1.19 2000/04/27 00:09:22 adam Exp $
+# $Id: Received.pm,v 1.21 2000/04/27 14:45:15 adam Exp $
 #
 
 require 5.005;
@@ -23,7 +23,7 @@ use vars qw($VERSION @ISA @EXPORT_OK);
 @ISA = qw(Exporter Mail::Field Mail::Field::Generic);
 @EXPORT_OK = qw(%RC &diagnose);
 
-$VERSION = '0.22';
+$VERSION = '0.23';
 
 =head1 NAME
 
@@ -354,7 +354,7 @@ sub parse {
         next TOKEN;
       }
       
-      if ($expecting{after_from} and /\G$RC{domain_lit}/cg) {
+      if ($expecting{after_from} and /\G($RC{domain_lit})/cg) {
         $self->diagnose("Got address from bad `from': $1\n") if $debug >= 3;
         $parsed{from}{address} = $1;
         delete $expecting{after_from};
@@ -400,7 +400,7 @@ sub parse {
         next TOKEN;
       }
 
-      if ($expecting{after_by} and /\G$RC{domain_lit}/cg) {
+      if ($expecting{after_by} and /\G($RC{domain_lit})/cg) {
         $self->diagnose("Got address from bad `by': $1\n") if $debug >= 3;
         $parsed{by}{address} = $1;
         delete $expecting{after_by};
@@ -513,7 +513,7 @@ sub parse {
         }
 
         if ($parsed{with}{with} eq 'WorldClient' and
-            /\G$RC{domain_lit}/cg) {
+            /\G($RC{domain_lit})/cg) {
           $self->diagnose("Got WorldClient address from bad `with': $1\n")
             if $debug >= 3;
           delete $expecting{after_with};
