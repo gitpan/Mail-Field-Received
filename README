@@ -14,8 +14,8 @@ Any program which requires detailed information about the journey an
 e-mail took in order to arrive at its present location should find
 this parser very handy.
 
-See <http://www.new.ox.ac.uk/~adam/computing/parp/> for an e-mail
-filter which uses this module as part of its spam detection heuristics.
+See <http://adamspiers.org/> for an e-mail filter which uses this
+module as part of its spam detection heuristics.
 
 Prerequisites
 -------------

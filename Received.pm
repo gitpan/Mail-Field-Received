@@ -7,7 +7,7 @@
 # reserved. This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# $Id: Received.pm,v 1.21 2000/04/27 14:45:15 adam Exp $
+# $Id: Received.pm,v 1.28 2003/03/17 23:45:17 adams Exp $
 #
 
 require 5.005;
@@ -23,32 +23,34 @@ use vars qw($VERSION @ISA @EXPORT_OK);
 @ISA = qw(Exporter Mail::Field Mail::Field::Generic);
 @EXPORT_OK = qw(%RC &diagnose);
 
-$VERSION = '0.23';
+$VERSION = '0.24';
 
 =head1 NAME
 
 Mail::Field::Received -- mostly RFC822-compliant parser of Received headers
+
+=head1 SYNOPSIS
+
+  use Mail::Field;
+
+  my $received = Mail::Field->new('Received', $header);
+  my $results = $received->parse_tree();
+  my $parsed_ok = $received->parsed_ok();
+  my $diagnostics = $received->diagnostics();
 
 =head1 DESCRIPTION
 
 I<Don't use this class directly!>  Instead ask Mail::Field for new
 instances based on the field name!
 
-Mail::Field::Received provides subroutines for parsing Received headers
-from e-mails.  It mostly complies with RFC822, but deviates to accomodate
-a number of broken MTAs which are in common use.
+Mail::Field::Received provides subroutines for parsing Received
+headers from e-mails.  It mostly complies with RFC822, but deviates to
+accomodate a number of broken MTAs which are in common use.  It also
+attempts to extract useful information which MTAs often embed within
+the C<(comments)>.
 
 It is a subclass derived from the Mail::Field and Mail::Field::Generic
 classes.
-
-=head1 SYNOPSIS
-
-  use Mail::Field::Received;
-
-  my $received = Mail::Field->new('Received', $header);
-  my $results = $received->parse_tree();
-  my $parsed_ok = $received->parsed_ok();
-  my $diagnostics = $received->diagnostics();
 
 =head1 ROUTINES
 
@@ -153,8 +155,10 @@ $RC{zone}        = qr/(
                         (?:$RC{zone_name})(?:
                       ))/x;
 $RC{hms}         = qr/($RC{TWO_DIGIT}:(\d\d)(?::(\d\d))?)/;
-$RC{month}       = qr/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/;
-$RC{week_day}    = qr/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/;
+# Note: case-insensitivity is not RFC-compliant here, but some MTAs
+# write days/months in all lower case.
+$RC{month}       = qr/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i;
+$RC{week_day}    = qr/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i;
 $RC{year}        = qr/((?:19|20)?\d{2}|100)/;  # god-DAMN the incompetence!
 $RC{year_day1}   = qr/(?:$RC{TWO_DIGIT}\s$RC{month})/;
 $RC{year_day2}   = qr/(?:$RC{month}\s$RC{TWO_DIGIT})/;
@@ -263,9 +267,7 @@ sub parse {
         if ($last_section eq 'from') {
          FROMCOMMENT:
           {
-            if ($comment =~ 
-#                            /()($RC{domain})\s+\[($RC{ipv4_addr})\]/)
-                            /\(
+            if ($comment =~ /\(
                                 (?:(?:($RC{local_part})\@)?($RC{domain})\s+)?
                                 (?:\[ $RC{ipv4_addr} \])(?:
                             )\)/x)
@@ -291,23 +293,23 @@ sub parse {
               last FROMCOMMENT;
             }
 
-            if ($comment =~ /(HELO|EHLO)\s+($RC{domain})/) {
+            if ($comment =~ /(HELO|EHLO)(?:\s+|=)($RC{domain})/i) {
               # HELO domain is in comments, not outside, so swap
-              $self->diagnose("Got $1 domain in comments: $2\n")
+              $self->diagnose("Got `from' $1 domain in comments: $2\n")
                 if $debug >= 3;
               @{$parsed{from}}{qw/domain HELO/}
                 = ($parsed{from}{HELO}, $2);
             }
 
             if ($comment =~ /$RC{ipv4_addr}\]?(?::(\d{1,5}))?/) {
-              $self->diagnose("Got IP address in comments: $1\n")
+              $self->diagnose("Got `from' IP address in comments: $1\n")
                 if $debug >= 3;
 
               $parsed{from}{address} = $1;
 
               if ($2) {
                 $parsed{from}{port} = $2;
-                $self->diagnose("Got port in comments: $1\n")
+                $self->diagnose("Got `from' port in comments: $1\n")
                   if $debug >= 3;
               }
             }
@@ -480,7 +482,7 @@ sub parse {
         next TOKEN;
       }
 
-      if ($expecting{after_with}) {
+      if ($expecting{after_with} && $parsed{with}{with}) {
 
         # Microsoft SMTPSVC uses two atoms -- yet /another/ example of
         # Microsoft not following standards ... *gasp*
@@ -705,7 +707,10 @@ like:
   {
    'by' => {
             'domain' => 'host5.hostingcheck.com',
-            'whole' => 'by host5.hostingcheck.com'
+            'whole' => 'by host5.hostingcheck.com',
+            'comments' => [
+                           '(8.9.3/8.9.3)'
+                          ],
            },
    'date_time' => {
                    'year' => 2000,
@@ -728,14 +733,13 @@ like:
              },
    'from' => {
               'domain' => 'mediacons.tecc.co.uk',
-              'HELO' => undef,
+              'HELO' => 'tr909.mediaconsult.com',
+              'from' => 'tr909.mediaconsult.com',
               'address' => '193.128.6.132',
               'comments' => [
                              '(mediacons.tecc.co.uk [193.128.6.132])',
-                             '(8.9.3/8.9.3)',
                             ],
               'whole' => 'from tr909.mediaconsult.com (mediacons.tecc.co.uk [193.128.6.132])
- (8
 '  
              },
    'id' => {
