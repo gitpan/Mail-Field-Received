@@ -1,3 +1,10 @@
+2010-06-16  Marcel Gruenauer  <marcel@cpan.org>
+
+	* Received.pm: 0.25
+	* t/all.t:
+	- fixed so tests work with recent MailTools
+	- added TODO test case
+
 2003-03-17  Adam Spiers  <perl@adamspiers.org>
 
 	* Received.pm:

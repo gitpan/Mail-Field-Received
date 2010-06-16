@@ -1,312 +1,186 @@
 #!/usr/bin/perl -w
-
+use warnings;
 use strict;
-use Test;
+use Test::More tests => 16;
+use Test::Differences;
 
-# First check that the module loads OK.
-use vars qw($loaded);
-BEGIN { $| = 1; plan tests => 18; }
-END {print "not ok 1\n" unless $loaded;}
-use Mail::Field::Received;
-print "! Testing module load ...\n";
-ok(++$loaded);
+sub parse_tree_ok {
+    my ($received, $expect, $name) = @_;
+    eq_or_diff $received->parse_tree, $expect, $name
+      or note $received->diagnostics;
+}
 
-use Data::Dumper;
-
-
-print "! Testing constructor ...\n";
+BEGIN { use_ok('Mail::Field::Received'); }
 my $received = Mail::Field->new('Received');
-ok($received);
-ok($received->tag(), 'Received');
-
-print "! Testing setting debug level ...\n";
+isa_ok $received, 'Mail::Field::Received';
+is $received->tag, 'Received', 'tag';
 $received->debug(5);
-ok($received->debug(), 5);
+is $received->debug, 5, 'debug level';
 
-
-print "! Testing parsing ...\n";
-my $in = 'from tr909.mediaconsult.com (mediacons.tecc.co.uk [193.128.6.132]) by host5.hostingcheck.com (8.9.3/8.9.3) with ESMTP id VAA24164 for <adam@spiers.net>; Tue, 1 Feb 2000 21:57:18 -0500';
-print "!   date format 3\n";
-ok($received->parse($in));
-ok($received->parsed_ok());
+# date format 3
+my $in =
+'from tr909.mediaconsult.com (mediacons.tecc.co.uk [193.128.6.132]) by host5.hostingcheck.com (8.9.3/8.9.3) with ESMTP id VAA24164 for <adam@spiers.net>; Tue, 1 Feb 2000 21:57:18 -0500';
 my $parse_tree = {
-                  'by' => {
-                           'domain' => 'host5.hostingcheck.com',
-                           'whole' => 'by host5.hostingcheck.com',
-                           'comments' => [
-                                          '(8.9.3/8.9.3)'
-                                         ],
-                          },
-                  'date_time' => {
-                                  'year' => 2000,
-                                  'week_day' => 'Tue',
-                                  'minute' => 57,
-                                  'day_of_year' => '1 Feb',
-                                  'month_day' => ' 1',
-                                  'zone' => '-0500',
-                                  'second' => 18,
-                                  'hms' => '21:57:18',
-                                  'date_time' => 'Tue, 1 Feb 2000 21:57:18 -0500',
-                                  'hour' => 21,
-                                  'month' => 'Feb',
-                                  'rest' => '2000 21:57:18 -0500',
-                                  'whole' => 'Tue, 1 Feb 2000 21:57:18 -0500'
-                                 },
-                  'with' => {
-                             'with' => 'ESMTP',
-                             'whole' => 'with ESMTP'
-                            },
-                  'from' => {
-                             'domain' => 'mediacons.tecc.co.uk',
-                             'HELO' => 'tr909.mediaconsult.com',
-                             'from' => 'tr909.mediaconsult.com',
-                             'address' => '193.128.6.132',
-                             'comments' => [
-                                            '(mediacons.tecc.co.uk [193.128.6.132])',
-                                           ],
-                             'whole' => 'from tr909.mediaconsult.com (mediacons.tecc.co.uk [193.128.6.132])
+    'by' => {
+        'domain'   => 'host5.hostingcheck.com',
+        'whole'    => 'by host5.hostingcheck.com',
+        'comments' => ['(8.9.3/8.9.3)'],
+    },
+    'date_time' => {
+        'year'        => '2000',
+        'week_day'    => 'Tue',
+        'minute'      => '57',
+        'day_of_year' => '1 Feb',
+        'month_day'   => ' 1',
+        'zone'        => '-0500',
+        'second'      => '18',
+        'hms'         => '21:57:18',
+        'date_time'   => 'Tue, 1 Feb 2000 21:57:18 -0500',
+        'hour'        => '21',
+        'month'       => 'Feb',
+        'rest'        => '2000 21:57:18 -0500',
+        'whole'       => 'Tue, 1 Feb 2000 21:57:18 -0500'
+    },
+    'with' => {
+        'with'  => 'ESMTP',
+        'whole' => 'with ESMTP'
+    },
+    'from' => {
+        'domain'   => 'mediacons.tecc.co.uk',
+        'HELO'     => 'tr909.mediaconsult.com',
+        'from'     => 'tr909.mediaconsult.com',
+        'address'  => '193.128.6.132',
+        'comments' => [ '(mediacons.tecc.co.uk [193.128.6.132])', ],
+        'whole' =>
+          'from tr909.mediaconsult.com (mediacons.tecc.co.uk [193.128.6.132])
 '
-                            },
-                  'id' => {
-                           'id' => 'VAA24164',
-                           'whole' => 'id VAA24164'
-                          },
-                  'comments' => [
-                                 '(mediacons.tecc.co.uk [193.128.6.132])',
-                                 '(8.9.3/8.9.3)'
-                                ],
-                  'for' => {
-                            'for' => '<adam@spiers.net>',
-                            'whole' => 'for <adam@spiers.net>'
-                           },
-                  'whole' => 'from tr909.mediaconsult.com (mediacons.tecc.co.uk [193.128.6.132]) by host5.hostingcheck.com (8.9.3/8.9.3) with ESMTP id VAA24164 for <adam@spiers.net>; Tue, 1 Feb 2000 21:57:18 -0500'
-                 };
-my $equal = equal_hashes($parse_tree, $received->parse_tree());
-ok($equal);
-diagnose($received) unless $equal;
-
-
-print "!   date format 3 again\n";
-$in = '(qmail 7119 invoked from network); 22 Feb 1999 22:01:53 -0000';
+    },
+    'id' => {
+        'id'    => 'VAA24164',
+        'whole' => 'id VAA24164'
+    },
+    'comments' => [ '(mediacons.tecc.co.uk [193.128.6.132])', '(8.9.3/8.9.3)' ],
+    'for'      => {
+        'for'   => '<adam@spiers.net>',
+        'whole' => 'for <adam@spiers.net>'
+    },
+    'whole' =>
+'from tr909.mediaconsult.com (mediacons.tecc.co.uk [193.128.6.132]) by host5.hostingcheck.com (8.9.3/8.9.3) with ESMTP id VAA24164 for <adam@spiers.net>; Tue, 1 Feb 2000 21:57:18 -0500'
+};
 $received->parse($in);
-ok($received->parsed_ok());
+is $received->parsed_ok, 1, 'date format 3 parsed ok';
+parse_tree_ok($received, $parse_tree, 'date format 3 parse tree');
+
+# date format 3 again
+$in         = '(qmail 7119 invoked from network); 22 Feb 1999 22:01:53 -0000';
 $parse_tree = {
-               'date_time' => {
-                               'year' => 1999,
-                               'week_day' => undef,
-                               'minute' => '01',
-                               'day_of_year' => '22 Feb',
-                               'month_day' => 22,
-                               'zone' => '-0000',
-                               'second' => 53,
-                               'date_time' => '22 Feb 1999 22:01:53 -0000',
-                               'hms' => '22:01:53',
-                               'hour' => 22,
-                               'month' => 'Feb',
-                               'rest' => '1999 22:01:53 -0000',
-                               'whole' => '22 Feb 1999 22:01:53 -0000'
-                              },
-               'comments' => [
-                              '(qmail 7119 invoked from network)'
-                             ],
-               'whole' => '(qmail 7119 invoked from network); 22 Feb 1999 22:01:53 -0000'
-              };
-$equal = equal_hashes($parse_tree, $received->parse_tree());
-ok($equal);
-diagnose($received) unless $equal;
+    'date_time' => {
+        'year'        => '1999',
+        'week_day'    => undef,
+        'minute'      => '01',
+        'day_of_year' => '22 Feb',
+        'month_day'   => '22',
+        'zone'        => '-0000',
+        'second'      => '53',
+        'date_time'   => '22 Feb 1999 22:01:53 -0000',
+        'hms'         => '22:01:53',
+        'hour'        => '22',
+        'month'       => 'Feb',
+        'rest'        => '1999 22:01:53 -0000',
+        'whole'       => '22 Feb 1999 22:01:53 -0000'
+    },
+    'comments' => ['(qmail 7119 invoked from network)'],
+    'whole' => '(qmail 7119 invoked from network); 22 Feb 1999 22:01:53 -0000'
+};
+$received->parse($in);
+is $received->parsed_ok, 1, 'date format 3 again parsed ok';
+parse_tree_ok($received, $parse_tree, 'date format 3 again parse tree');
 
-
-print "!   date format 1\n";
-my $new_date = '22 Feb';
-my $new_rest = '22:01:53 1999 -0000';
+# date format 1
+my $new_date      = '22 Feb';
+my $new_rest      = '22:01:53 1999 -0000';
 my $new_date_time = "$new_date $new_rest";
 $in = "(qmail 7119 invoked from network); $new_date_time";
-$received->parse($in);
-ok($received->parsed_ok());
-$parse_tree->{date_time}{whole} = $new_date_time;
+$parse_tree->{date_time}{whole}     = $new_date_time;
 $parse_tree->{date_time}{date_time} = $new_date_time;
-$parse_tree->{date_time}{rest} = $new_rest;
-$parse_tree->{whole} = $in;
-$equal = equal_hashes($parse_tree, $received->parse_tree());
-ok($equal);
-diagnose($received) unless $equal;
+$parse_tree->{date_time}{rest}      = $new_rest;
+$parse_tree->{whole}                = $in;
+$received->parse($in);
+is $received->parsed_ok, 1, 'date format 1 parsed ok';
+parse_tree_ok($received, $parse_tree, 'date format 1 parse tree');
 
-
-print "!   date format 2\n";
-$new_date = '22 Feb';
-$new_rest = '22:01:53 -0000 1999';
+# date format 2
+$new_date      = '22 Feb';
+$new_rest      = '22:01:53 -0000 1999';
 $new_date_time = "$new_date $new_rest";
-$in = "(qmail 7119 invoked from network); $new_date_time";
-$received->parse($in);
-ok($received->parsed_ok());
-$parse_tree->{date_time}{whole} = $new_date_time;
+$in            = "(qmail 7119 invoked from network); $new_date_time";
+$parse_tree->{date_time}{whole}     = $new_date_time;
 $parse_tree->{date_time}{date_time} = $new_date_time;
-$parse_tree->{date_time}{rest} = $new_rest;
-$parse_tree->{whole} = $in;
-$equal = equal_hashes($parse_tree, $received->parse_tree());
-ok($equal);
-diagnose($received) unless $equal;
+$parse_tree->{date_time}{rest}      = $new_rest;
+$parse_tree->{whole}                = $in;
+$received->parse($in);
+is $received->parsed_ok, 1, 'date format 2 parsed ok';
+parse_tree_ok($received, $parse_tree, 'date format 2 parse tree');
 
+# IP-based hostname
+TODO: {
+    local $TODO = 'parsing IP-based hostname fails (see RT #51169)';
+    $in =
+'Received: from 140.85.213.193.static.cust.telenor.com ([193.213.85.140]) by einstein.junkemailfilter.com with esmtp (Exim 4.69) id 1N63Ug-0008GI-Vp on interface=64.71.167.93 for xxxxx@xxxxxcom; Thu, 05 Nov 2009 06:39:23 -0800';
+    $received->parse($in);
+    is $received->parsed_ok, 1, 'IP-based hostname parsed ok';
 
-print "! Testing different constructor method ...\n";
-$in = 'from lists.securityfocus.com (lists.securityfocus.com [207.126.127.68]) by lists.securityfocus.com (Postfix) with ESMTP id 1C2AF1F138; Mon, 14 Feb 2000 10:24:11 -0800 (PST)';
-my $received2 = Mail::Field->new('Received', $in);
-ok($received2->parsed_ok());
+    # parse_tree_ok($received, $parse_tree, 'date format 2 parse tree');
+}
+
+# alternate constructor call
+$in =
+'from lists.securityfocus.com (lists.securityfocus.com [207.126.127.68]) by lists.securityfocus.com (Postfix) with ESMTP id 1C2AF1F138; Mon, 14 Feb 2000 10:24:11 -0800 (PST)';
 $parse_tree = {
-               'by' => {
-                        'domain' => 'lists.securityfocus.com',
-                        'whole' => 'by lists.securityfocus.com',
-                        'comments' => [
-                                       '(Postfix)'
-                                      ],
-                       },
-               'date_time' => {
-                               'year' => 2000,
-                               'week_day' => 'Mon',
-                               'minute' => 24,
-                               'day_of_year' => '14 Feb',
-                               'month_day' => 14,
-                               'zone' => '-0800 (PST)',
-                               'second' => 11,
-                               'date_time' => 'Mon, 14 Feb 2000 10:24:11 -0800 (PST)',
-                               'hour' => 10,
-                               'hms' => '10:24:11',
-                               'month' => 'Feb',
-                               'rest' => '2000 10:24:11 -0800 (PST)',
-                               'whole' => 'Mon, 14 Feb 2000 10:24:11 -0800 (PST)'
-                              },
-               'with' => {
-                          'with' => 'ESMTP',
-                          'whole' => 'with ESMTP'
-                         },
-               'from' => {
-                          'domain' => 'lists.securityfocus.com',
-                          'from' => 'lists.securityfocus.com',
-                          'HELO' => 'lists.securityfocus.com',
-                          'address' => '207.126.127.68',
-                          'comments' => [
-                                         '(lists.securityfocus.com [207.126.127.68])',
-                                        ],
-                          'whole' => 'from lists.securityfocus.com (lists.securityfocus.com [207.126.127.68])
+    'by' => {
+        'domain'   => 'lists.securityfocus.com',
+        'whole'    => 'by lists.securityfocus.com',
+        'comments' => ['(Postfix)'],
+    },
+    'date_time' => {
+        'year'        => '2000',
+        'week_day'    => 'Mon',
+        'minute'      => '24',
+        'day_of_year' => '14 Feb',
+        'month_day'   => '14',
+        'zone'        => '-0800 (PST)',
+        'second'      => '11',
+        'date_time'   => 'Mon, 14 Feb 2000 10:24:11 -0800 (PST)',
+        'hour'        => '10',
+        'hms'         => '10:24:11',
+        'month'       => 'Feb',
+        'rest'        => '2000 10:24:11 -0800 (PST)',
+        'whole'       => 'Mon, 14 Feb 2000 10:24:11 -0800 (PST)'
+    },
+    'with' => {
+        'with'  => 'ESMTP',
+        'whole' => 'with ESMTP'
+    },
+    'from' => {
+        'domain'   => 'lists.securityfocus.com',
+        'from'     => 'lists.securityfocus.com',
+        'HELO'     => 'lists.securityfocus.com',
+        'address'  => '207.126.127.68',
+        'comments' => [ '(lists.securityfocus.com [207.126.127.68])', ],
+        'whole' =>
+'from lists.securityfocus.com (lists.securityfocus.com [207.126.127.68])
 '
-                         },
-               'id' => {
-                        'id' => '1C2AF1F138',
-                        'whole' => 'id 1C2AF1F138'
-                       },
-               'comments' => [
-                              '(lists.securityfocus.com [207.126.127.68])',
-                              '(Postfix)'
-                             ],
-               'whole' => 'from lists.securityfocus.com (lists.securityfocus.com [207.126.127.68]) by lists.securityfocus.com (Postfix) with ESMTP id 1C2AF1F138; Mon, 14 Feb 2000 10:24:11 -0800 (PST)'
-              };
-$equal = equal_hashes($parse_tree, $received2->parse_tree());
-ok($equal);
-diagnose($received2) unless $equal;
-
-
-print "Testing stringify() ...\n";
-ok($received2->stringify(), $in);
-
-
-print "Testing diagnostics code ...\n";
-ok($received2->diagnostics()); # bit difficult to check this one properly
+    },
+    'id' => {
+        'id'    => '1C2AF1F138',
+        'whole' => 'id 1C2AF1F138'
+    },
+    'comments' => [ '(lists.securityfocus.com [207.126.127.68])', '(Postfix)' ],
+    'whole' =>
+'from lists.securityfocus.com (lists.securityfocus.com [207.126.127.68]) by lists.securityfocus.com (Postfix) with ESMTP id 1C2AF1F138; Mon, 14 Feb 2000 10:24:11 -0800 (PST)'
+};
+my $received2 = Mail::Field->new('Received', $in);
+is $received2->parsed_ok, 1, 'alternate constructor parsed ok';
+parse_tree_ok($received2, $parse_tree, 'alternate constructor parse tree');
 $received2->diagnose('squr', 'gle');
-ok($received2->diagnostics(), '/squrgle/');
-
-
-
-exit 0;
-
-
-##############################################################################
-
-sub equal_hashes {
-  my ($a, $b) = @_;
-
-  my @a = sort keys %$a;
-  my @b = sort keys %$b;
-  
-  while (my $p = shift @a and my $q = shift @b) {
-#   print "Comparing `$p' and `$q' ...\n";
-    
-    if (defined($p) xor defined($q)) {
-      print "first key undefined\n" unless defined($p);
-      print "second key undefined\n" unless defined($q);
-      return 0;
-    }
-    if ($p ne $q) {
-      print "`$p' ne `$q'\n";
-      return 0;
-    }
-    if (defined($a->{$p}) xor defined($b->{$q})) {
-      print "first value (key `$p') undef\n" unless defined($a->{$p});
-      print "second value (key `$q') undef\n" unless defined($b->{$q});
-      return 0;
-    }
-    elsif (! defined($a->{$p}) and ! defined($b->{$q})) {
-      next;
-    }
-    elsif (ref($a->{$p}) ne ref($b->{$q})) {
-      print "ref mismatch on values for `$p' and `$q'\n";
-      return 0;
-    }
-    elsif (ref($a->{$p}) eq 'HASH') {
-      # recursion rules
-      return 0 unless equal_hashes($a->{$p}, $b->{$q});
-    }
-    elsif (ref($a->{$p}) eq 'ARRAY') {
-      return 0 unless equal_arrays($a->{$p}, $b->{$q});
-    }
-    elsif (ref($a->{$p})) {
-      die "found unsupported type of ref\n" .
-          "(value of `$p' was " . ref($a->{$p}) . " ref)";
-    }
-    else {
-      if ($a->{$p} ne $b->{$q}) {
-        print "key `$p': `$a->{$p}' ne `$b->{$q}'\n";
-        return 0;
-      }
-    }
-  }
-
-  return 1;
-}
-
-sub equal_arrays {
-  my ($a, $b) = @_;
-
-  local $^W = 0;  # silence spurious -w undef complaints
-  if (@$a != @$b) {
-    print "Arrays of different length:\n", (Dumper $a), (Dumper $b);
-    return 0;
-  }
-  
-  for (my $i = 0; $i < @$a; $i++) {
-#   print "Comparing `$a->[$i]' and `$b->[$i]' ...\n";
-    return 0 if $a->[$i] ne $b->[$i];
-  }
-  return 1;
-}
-  
-sub diagnose {
-  my ($received) = @_;
-
-  print <<EOF;
-
-Diagnostics:
-============
-
-EOF
-
-  print $received->diagnostics();
-
-  print <<EOF;
-
-Parse tree:
-===========
-
-EOF
-  print Dumper $received->parse_tree();
-  print "\n";
-}
+like $received2->diagnostics, qr/^squrgle$/m, 'diagnostics';

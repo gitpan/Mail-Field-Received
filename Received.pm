@@ -23,7 +23,7 @@ use vars qw($VERSION @ISA @EXPORT_OK);
 @ISA = qw(Exporter Mail::Field Mail::Field::Generic);
 @EXPORT_OK = qw(%RC &diagnose);
 
-$VERSION = '0.24';
+$VERSION = '0.25';
 
 =head1 NAME
 
