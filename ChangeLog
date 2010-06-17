@@ -1,3 +1,8 @@
+2010-06-18  Marcel Gruenauer  <marcel@cpan.org>
+
+	* Received.pm: 0.26
+	* Makefile.PL: added dependencies
+
 2010-06-16  Marcel Gruenauer  <marcel@cpan.org>
 
 	* Received.pm: 0.25

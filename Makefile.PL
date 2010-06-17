@@ -5,6 +5,8 @@ WriteMakefile(
     'NAME'         => 'Mail::Field::Received',
     'VERSION_FROM' => 'Received.pm', # finds $VERSION
     'PREREQ_PM'    => {
-                       'Mail::Field' => 0,
+                       'Mail::Field'       => 0,
+                       'Test::More'        => 0,
+                       'Test::Differences' => 0,
                       },
 );

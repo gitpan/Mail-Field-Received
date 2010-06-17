@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Mail-Field-Received
-version:            0.25
+version:            0.26
 abstract:           ~
 author:  []
 license:            unknown
@@ -10,7 +10,9 @@ configure_requires:
 build_requires:
     ExtUtils::MakeMaker:  0
 requires:
-    Mail::Field:  0
+    Mail::Field:        0
+    Test::Differences:  0
+    Test::More:         0
 no_index:
     directory:
         - t
